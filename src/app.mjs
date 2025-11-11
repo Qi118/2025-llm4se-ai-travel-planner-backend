@@ -1,16 +1,20 @@
-import express from "express";
-import dotenv from "dotenv";
-import aiRoutes from "./routes/ai.mjs";
-
-dotenv.config();
+import express from 'express';
+import cors from 'cors';
+import aiRouter from './routes/ai.mjs';
 
 const app = express();
+
+app.use(cors({
+    origin: 'http://localhost:5173', // 允许的前端地址
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    credentials: true
+}));
+
 app.use(express.json());
 
-// 路由挂载
-app.use("/api/ai", aiRoutes);
+// 挂载路由
+app.use('/api/ai', aiRouter);
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-    console.log(`🚀 服务器已启动：http://localhost:${PORT}`);
+app.listen(3000, () => {
+    console.log('🚀 服务器已启动：http://localhost:3000');
 });
