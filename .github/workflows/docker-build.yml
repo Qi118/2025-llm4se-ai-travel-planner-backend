@@ -1,0 +1,40 @@
+name: Build Node.js Docker Image
+
+on:
+  push:
+    branches:
+      - main  # push 到 main 分支触发
+
+jobs:
+  build-docker:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1️⃣ 拉取代码
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # 2️⃣ 设置 Node.js 环境
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
+      # 3️⃣ 安装依赖（可选，Dockerfile 内也安装了）
+      - name: Install dependencies
+        run: npm ci
+
+      # 4️⃣ 构建 Docker 镜像
+      - name: Build Docker image
+        run: docker build -t my-node-backend:latest .
+
+      # 5️⃣ 保存 Docker 镜像为 tar
+      - name: Save Docker image as tar
+        run: docker save my-node-backend:latest -o my-node-backend.tar
+
+      # 6️⃣ 上传 artifact（v4）
+      - name: Upload Docker image artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: my-node-backend-docker
+          path: my-node-backend.tar
