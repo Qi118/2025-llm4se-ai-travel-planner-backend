@@ -20,66 +20,119 @@ export async function generateItinerary(prompt) {
     try {
         const response = await axios.post(`${BASE_URL}/chat/completions`, {
             model: "qwen-plus", messages: [{
-                role: "system", content: `
-你是旅行规划助手。请根据用户输入生成结构化 JSON 数据，严格按照以下要求：
+                role: "system", content:  `
+你是智能旅行规划助手，使用 **高德地图 API (GCJ-02 坐标系)** 进行地理位置与导航规划。
+请根据用户输入生成结构化 JSON 数据，严格遵循以下格式：
 
-1. 输出 JSON 对象，包含以下字段：
+---
+
+### 📘 输出结构
 {
-  "destination": string,          // 用户输入的目的地
-  "startDate": string,            // 出发日期，格式 YYYY-MM-DD
-  "endDate": string,              // 返回日期，格式 YYYY-MM-DD
-  "durationDays": number,         // 旅行天数
-  "budget": number,               // 总预算
-  "members": number,              // 同行人数
-  "preferences": string[],        // 用户旅行偏好，如 ["美食","动漫"]
-  "planSummary": string,          // AI 生成的行程概览（简短文字）
-  "itinerary": [                  // 每日行程
-    {
-      "date": string,             // 日期 YYYY-MM-DD
-      "activities": [
-        {
-          "time": string,        // 时间，如"上午 9:00"
-          "place": string,       // 地点
-          "type": string,        // 类型：景点/餐厅/交通
-          "costEstimate": number,// 预计花费
-          "note": string         // 备注
-        }
-      ]
-    }
-  ],
-  "expenses": [                   // 预算/消费明细
-    {
-      "category": string,         // 分类：住宿/餐饮/交通/娱乐等
-      "amount": number,           // 金额
-      "note": string,             // 备注
-      "createdAt": string         // 时间 ISO 格式
-    }
-  ],
-  "totalBudget": number,          // 总预算
-  "breakdown": {                  // 各项费用明细
+  "destination": string,
+  "startDate": string,               // YYYY-MM-DD
+  "endDate": string,
+  "durationDays": number,
+  "budget": number,
+  "members": number,
+  "preferences": string[],
+  "planSummary": string,
+
+  "routeOverview": {
+    "polyline": string,              // 高德地图路线折线编码
+    "totalDistanceMeters": number,
+    "totalDurationSeconds": number
+  },
+
+  "aiBudget": {
+    "total": number,
+    "currency": "CNY",
+    "generatedAt": string,
+    "confidence": number
+  },
+
+  "budgetBreakdown": {
     "transportation": number,
     "accommodation": number,
     "meals": number,
     "attractions": number,
     "shopping": number,
     "miscellaneous": number
-  }
+  },
+
+  "itinerary": [
+    {
+      "date": string,
+      "activities": [
+        {
+          "time": string,
+          "place": string,
+          "type": string,
+          "costEstimate": number,
+          "note": string,
+          "location": {               // 基于高德地图
+            "lat": number,
+            "lng": number,
+            "address": string
+          },
+          "poiId": string,
+          "estimatedDurationMinutes": number,
+          "distanceFromPrevMeters": number,
+          "transportToNext": {
+            "mode": string,
+            "estimatedDurationSeconds": number,
+            "distanceMeters": number,
+            "routePolyline": string,
+            "steps": [
+              {
+                "instruction": string,
+                "distance": number,
+                "duration": number
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ],
+
+  "expenses": [
+    {
+      "category": string,
+      "amount": number,
+      "note": string,
+      "createdAt": string,
+      "paymentMethod": string,
+      "currency": "CNY",
+      "receiptUrl": string,
+      "location": { "lat": number, "lng": number, "address": string },
+      "voiceNoteUrl": string,
+      "voiceText": string,
+      "enteredBy": string,
+      "tags": string[],
+      "linkedActivityId": string
+    }
+  ],
+
+  "totalBudget": number
 }
 
-2. 用户输入示例：
+---
+
+### ⚙️ 生成要求：
+1. 默认使用高德地图数据（GCJ-02），生成合理经纬度；
+2. 每天 ≥ 3 个活动；
+3. **在每天的 activities 中，必须包含“住宿”类型（type: "accommodation"），并包含酒店或民宿的详细信息（如名称、地址、经纬度、价格估算等）；**
+4. 预算明细与总额匹配；
+5. aiBudget、breakdown、totalBudget 保持一致；
+6. 输出必须是纯 JSON，不含解释或额外文字。
+
+---
+
+### 示例输入：
 {
-  "prompt": "我想去北京，两天，预算1000元，2人同行，喜欢美食和景点"
+  "prompt": "我想去上海玩三天，两人同行，预算2000元，偏好美食和夜景"
 }
-
-3. 根据用户输入生成：
-- itinerary 数组长度 = durationDays
-- 每天至少安排 3 个活动，包含 time、place、type、costEstimate、note
-- 总预算 totalBudget = 各项花费之和
-- breakdown 填写详细费用
-
-4. 只返回 JSON，不要返回任何额外文本，不要带解释说明。
-
-`
+        `
             }, {role: "user", content: prompt}]
         }, {
             headers: {
